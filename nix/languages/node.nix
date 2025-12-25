@@ -104,7 +104,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.get('/', (req, res) => {
-  res.json({ message: 'Hello from Node.js! 🚀' });
+  res.json({ message: 'Hello from Node.js!' });
 });
 
 app.get('/health', (req, res) => {
@@ -113,7 +113,7 @@ app.get('/health', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(\`Server running on port \${PORT}\`);
+  console.log(`Server running on port ${PORT}`);
 });
 
 module.exports = app;

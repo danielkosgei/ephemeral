@@ -135,7 +135,7 @@ func main() {
 	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello from Go! 🚀")
+		fmt.Fprintf(w, "Hello from Go!")
 	})
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
