@@ -15,9 +15,10 @@
         common = import (./. + "/nix/common.nix") { inherit pkgs; };
         goModule = import (./. + "/nix/languages/go.nix") { inherit pkgs; };
         nodeModule = import (./. + "/nix/languages/node.nix") { inherit pkgs; };
+        pythonModule = import (./. + "/nix/languages/python.nix") { inherit pkgs; };
         
         # Compose packages from all modules
-        allPackages = common.packages ++ goModule.packages ++ nodeModule.packages;
+        allPackages = common.packages ++ goModule.packages ++ nodeModule.packages ++ pythonModule.packages;
         
         # Main shell hook composing all parts
         composedShellHook = ''
@@ -64,6 +65,26 @@
               USE_REDIS=false
             fi
             
+          elif [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+            # Already in a Python project, skip menu
+            IS_EXISTING_PROJECT=true
+            PROJECT_LANG="python"
+            if [ -f "pyproject.toml" ]; then
+              PROJECT_NAME=$(grep -E '^name = ' pyproject.toml | head -n1 | sed 's/name = "\(.*\)"/\1/' || basename "$PWD")
+            else
+              PROJECT_NAME=$(basename "$PWD")
+            fi
+            gum style --foreground "#b4f8c8" "✓ Detected existing Python project: $PROJECT_NAME"
+            echo ""
+            
+            # Load workspace config if available
+            if [ -f ".workspace-config" ]; then
+              source .workspace-config
+            else
+              USE_DATABASE="PostgreSQL"
+              USE_REDIS=false
+            fi
+            
           else
             # Show menu to create new or open existing
             gum style --margin "0 4" --foreground "$LAVENDER" "What would you like to do?"
@@ -73,17 +94,17 @@
             echo ""
             
             if [ "$ACTION" = "Open existing project" ]; then
-              # Scan for projects (Go or Node.js) in current directory
+              # Scan for projects (Go, Node.js, or Python) in current directory
               PROJECTS=()
               for dir in */; do
-                if [ -f "$dir.workspace-config" ] || [ -f "$dir/go.mod" ] || [ -f "$dir/package.json" ]; then
+                if [ -f "$dir.workspace-config" ] || [ -f "$dir/go.mod" ] || [ -f "$dir/package.json" ] || [ -f "$dir/pyproject.toml" ]; then
                   PROJECTS+=("$dir")
                 fi
               done
               
               if [ ''${#PROJECTS[@]} -eq 0 ]; then
                 gum style --foreground "$WARN" "⚠️  No projects found in current directory"
-                gum style --margin "0 4" --faint "Tip: Projects need a .workspace-config, go.mod, or package.json file"
+                gum style --margin "0 4" --faint "Tip: Projects need a .workspace-config, go.mod, package.json, or pyproject.toml file"
                 exit 1
               fi
               
@@ -110,6 +131,9 @@
               elif [ -f "package.json" ]; then
                 PROJECT_LANG="node"
                 PROJECT_NAME=$(jq -r '.name // "unknown"' package.json 2>/dev/null || basename "$PWD")
+              elif [ -f "pyproject.toml" ]; then
+                PROJECT_LANG="python"
+                PROJECT_NAME=$(grep -E '^name = ' pyproject.toml | head -n1 | sed 's/name = "\(.*\)"/\1/' || basename "$PWD")
               else
                 PROJECT_NAME="$SELECTED_PROJECT"
                 PROJECT_LANG="unknown"
@@ -144,7 +168,7 @@
 
             # Ask for language choice
             gum style --margin "0 4" "Choose a language:"
-            PROJECT_LANG=$(gum choose "Go" "Node.js")
+            PROJECT_LANG=$(gum choose "Go" "Node.js" "Python")
             echo ""
             
             # Normalize language name
@@ -152,6 +176,8 @@
               PROJECT_LANG="go"
             elif [ "$PROJECT_LANG" = "Node.js" ]; then
               PROJECT_LANG="node"
+            elif [ "$PROJECT_LANG" = "Python" ]; then
+              PROJECT_LANG="python"
             fi
 
             # Ask for project name
@@ -205,6 +231,7 @@
           
           ${goModule.scaffoldHook}
           ${nodeModule.scaffoldHook}
+          ${pythonModule.scaffoldHook}
           
           # ====================================================================================
           # Environment Variables
@@ -227,6 +254,7 @@
             "" \
             "$(echo -e "  $LAVENDER Go: $RESET $(go version | awk '{print $3}')")" \
             "$(echo -e "  $LAVENDER Node.js: $RESET $(node --version)")" \
+            "$(echo -e "  $LAVENDER Python: $RESET $(python --version | awk '{print $2}')")" \
             "$(if [ "$USE_DATABASE" = "PostgreSQL" ]; then echo -e "  $MINT PostgreSQL: $RESET $(postgres --version | awk '{print $3}')"; fi)" \
             "$(if [ "$USE_REDIS" = "true" ]; then echo -e "  $MINT Redis: $RESET $(redis-server --version | awk '{print $3}')"; fi)"
           
@@ -244,6 +272,7 @@
           
           ${goModule.aliasesHook}
           ${nodeModule.aliasesHook}
+          ${pythonModule.aliasesHook}
           
           # Database aliases (if PostgreSQL enabled)
           if [ "$USE_DATABASE" = "PostgreSQL" ]; then
