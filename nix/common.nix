@@ -80,8 +80,10 @@ in
   
   # Database setup function (returns shell code)
   databaseSetup = ''
-    # Data directories
-    mkdir -p .data/postgres .data/redis
+    # Only create .data if we're in a project (PROJECT_NAME is set)
+    if [ -n "$PROJECT_NAME" ]; then
+      mkdir -p .data/postgres .data/redis
+    fi
 
     # Database Setup
     if [ "$USE_DATABASE" = "PostgreSQL" ]; then
