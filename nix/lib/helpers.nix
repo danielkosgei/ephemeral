@@ -31,7 +31,5 @@ rec {
     export MINT="${colors.mint}"
     export WARN="${colors.warn}"
     export RESET="${colors.reset}"
-    export BOLD="${colors.bold}"
-    export DIM="${colors.dim}"
   '';
 }
