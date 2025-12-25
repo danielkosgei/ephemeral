@@ -3,7 +3,7 @@
   # Node.js-specific packages
   packages = with pkgs; [
     nodejs
-    nodePackages.npm
+    bun
   ];
   
   # Node.js project scaffolding
@@ -20,9 +20,9 @@
   "description": "A Node.js application built with Nix development environment",
   "main": "src/index.js",
   "scripts": {
-    "dev": "nodemon src/index.js",
-    "start": "node src/index.js",
-    "test": "jest",
+    "dev": "bun --watch src/index.js",
+    "start": "bun src/index.js",
+    "test": "bun test",
     "lint": "eslint src/",
     "format": "prettier --write ."
   },
@@ -30,10 +30,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "nodemon": "^3.0.0",
     "eslint": "^8.0.0",
-    "prettier": "^3.0.0",
-    "jest": "^29.0.0"
+    "prettier": "^3.0.0"
   },
   "dependencies": {
     "express": "^4.18.0",
@@ -113,7 +111,7 @@ app.get('/health', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ''${PORT}`);
 });
 
 module.exports = app;
@@ -144,34 +142,34 @@ nix develop
 Install dependencies:
 
 \\\`\\\`\\\`bash
-npm install
+bun install
 \\\`\\\`\\\`
 
 Run the development server:
 
 \\\`\\\`\\\`bash
-npm run dev
+bun run dev
 \\\`\\\`\\\`
 
 ### Production
 
 \\\`\\\`\\\`bash
-npm start
+bun start
 \\\`\\\`\\\`
 
 ### Testing
 
 \\\`\\\`\\\`bash
-npm test
+bun test
 \\\`\\\`\\\`
 
 ## Available Commands
 
-- \\\`npm run dev\\\` - Start development server with hot reload
-- \\\`npm start\\\` - Start production server
-- \\\`npm test\\\` - Run tests
-- \\\`npm run lint\\\` - Run linter
-- \\\`npm run format\\\` - Format code with Prettier
+- \\\`bun run dev\\\` - Start development server with hot reload
+- \\\`bun start\\\` - Start production server
+- \\\`bun test\\\` - Run tests
+- \\\`bun run lint\\\` - Run linter
+- \\\`bun run format\\\` - Format code with Prettier
 README_EOF
       fi
       
@@ -210,8 +208,8 @@ ENV_EOF
       
       # Prompt to install dependencies
       echo ""
-      if gum confirm "Would you like to install npm dependencies now?"; then
-        npm install
+      if gum confirm "Would you like to install dependencies now?"; then
+        bun install
       fi
     fi
   '';
@@ -220,16 +218,17 @@ ENV_EOF
   aliasesHook = ''
     if [ "$PROJECT_LANG" = "node" ]; then
       # Development
-      alias dev='npm run dev'
-      alias start='npm start'
-      alias test='npm test'
-      alias lint='npm run lint'
-      alias format='npm run format'
+      alias dev='bun run dev'
+      alias start='bun start'
+      alias test='bun test'
+      alias lint='bun run lint'
+      alias format='bun run format'
       
       # Package management
-      alias ni='npm install'
-      alias nid='npm install --save-dev'
-      alias nu='npm update'
+      alias bi='bun install'
+      alias ba='bun add'
+      alias bad='bun add --dev'
+      alias br='bun remove'
     fi
   '';
 }
