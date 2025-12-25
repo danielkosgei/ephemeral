@@ -312,8 +312,11 @@ ENV_EOF
   # Python-specific aliases
   aliasesHook = ''
     if [ "$PROJECT_LANG" = "python" ]; then
+      # Find the actual module name in src/
+      PYTHON_MODULE=$(ls -d src/*/ 2>/dev/null | head -n1 | xargs basename 2>/dev/null || echo "unknown")
+      
       # Development
-      alias dev='poetry run uvicorn src.*.main:app --reload --host 0.0.0.0 --port ''${PORT:-8000}'
+      alias dev="poetry run uvicorn src.''${PYTHON_MODULE}.main:app --reload --host 0.0.0.0 --port ''${PORT:-8000}"
       alias test='poetry run pytest'
       alias lint='poetry run ruff check .'
       alias format='poetry run black . && poetry run ruff check --fix .'
