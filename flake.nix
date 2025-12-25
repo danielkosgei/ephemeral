@@ -16,9 +16,12 @@
         goModule = import (./. + "/nix/languages/go.nix") { inherit pkgs; };
         nodeModule = import (./. + "/nix/languages/node.nix") { inherit pkgs; };
         pythonModule = import (./. + "/nix/languages/python.nix") { inherit pkgs; };
+        rustModule = import (./. + "/nix/languages/rust.nix") { inherit pkgs; };
+        denoModule = import (./. + "/nix/languages/deno.nix") { inherit pkgs; };
         
         # Compose packages from all modules
-        allPackages = common.packages ++ goModule.packages ++ nodeModule.packages ++ pythonModule.packages;
+        allPackages = common.packages ++ goModule.packages ++ nodeModule.packages 
+                   ++ pythonModule.packages ++ rustModule.packages ++ denoModule.packages;
         
         # Main shell hook composing all parts
         composedShellHook = ''
@@ -85,6 +88,38 @@
               USE_REDIS=false
             fi
             
+          elif [ -f "Cargo.toml" ]; then
+            # Already in a Rust project, skip menu
+            IS_EXISTING_PROJECT=true
+            PROJECT_LANG="rust"
+            PROJECT_NAME=$(grep -E '^name = ' Cargo.toml | head -n1 | sed 's/name = "\(.*\)"/\1/' || basename "$PWD")
+            gum style --foreground "#b4f8c8" "✓ Detected existing Rust project: $PROJECT_NAME"
+            echo ""
+            
+            # Load workspace config if available
+            if [ -f ".workspace-config" ]; then
+              source .workspace-config
+            else
+              USE_DATABASE="PostgreSQL"
+              USE_REDIS=false
+            fi
+            
+          elif [ -f "deno.json" ] || [ -f "deno.jsonc" ]; then
+            # Already in a Deno project, skip menu
+            IS_EXISTING_PROJECT=true
+            PROJECT_LANG="deno"
+            PROJECT_NAME=$(basename "$PWD")
+            gum style --foreground "#b4f8c8" "✓ Detected existing Deno project: $PROJECT_NAME"
+            echo ""
+            
+            # Load workspace config if available
+            if [ -f ".workspace-config" ]; then
+              source .workspace-config
+            else
+              USE_DATABASE="PostgreSQL"
+              USE_REDIS=false
+            fi
+            
           else
             # Show menu to create new or open existing
             gum style --margin "0 4" --foreground "$LAVENDER" "What would you like to do?"
@@ -94,17 +129,17 @@
             echo ""
             
             if [ "$ACTION" = "Open existing project" ]; then
-              # Scan for projects (Go, Node.js, or Python) in current directory
+              # Scan for projects (Go, Node.js, Python, Rust, Deno) in current directory
               PROJECTS=()
               for dir in */; do
-                if [ -f "$dir.workspace-config" ] || [ -f "$dir/go.mod" ] || [ -f "$dir/package.json" ] || [ -f "$dir/pyproject.toml" ]; then
+                if [ -f "$dir.workspace-config" ] || [ -f "$dir/go.mod" ] || [ -f "$dir/package.json" ] || [ -f "$dir/pyproject.toml" ] || [ -f "$dir/Cargo.toml" ] || [ -f "$dir/deno.json" ]; then
                   PROJECTS+=("$dir")
                 fi
               done
               
               if [ ''${#PROJECTS[@]} -eq 0 ]; then
                 gum style --foreground "$WARN" "⚠️  No projects found in current directory"
-                gum style --margin "0 4" --faint "Tip: Projects need a .workspace-config, go.mod, package.json, or pyproject.toml file"
+                gum style --margin "0 4" --faint "Tip: Projects need a .workspace-config, go.mod, package.json, pyproject.toml, Cargo.toml, or deno.json file"
                 exit 1
               fi
               
@@ -134,6 +169,12 @@
               elif [ -f "pyproject.toml" ]; then
                 PROJECT_LANG="python"
                 PROJECT_NAME=$(grep -E '^name = ' pyproject.toml | head -n1 | sed 's/name = "\(.*\)"/\1/' || basename "$PWD")
+              elif [ -f "Cargo.toml" ]; then
+                PROJECT_LANG="rust"
+                PROJECT_NAME=$(grep -E '^name = ' Cargo.toml | head -n1 | sed 's/name = "\(.*\)"/\1/' || basename "$PWD")
+              elif [ -f "deno.json" ]; then
+                PROJECT_LANG="deno"
+                PROJECT_NAME=$(basename "$PWD")
               else
                 PROJECT_NAME="$SELECTED_PROJECT"
                 PROJECT_LANG="unknown"
@@ -168,7 +209,7 @@
 
             # Ask for language choice
             gum style --margin "0 4" "Choose a language:"
-            PROJECT_LANG=$(gum choose "Go" "Node.js" "Python")
+            PROJECT_LANG=$(gum choose "Go" "Node.js" "Python" "Rust" "Deno (TypeScript)")
             echo ""
             
             # Normalize language name
@@ -178,6 +219,10 @@
               PROJECT_LANG="node"
             elif [ "$PROJECT_LANG" = "Python" ]; then
               PROJECT_LANG="python"
+            elif [ "$PROJECT_LANG" = "Rust" ]; then
+              PROJECT_LANG="rust"
+            elif [ "$PROJECT_LANG" = "Deno (TypeScript)" ]; then
+              PROJECT_LANG="deno"
             fi
 
             # Ask for project name
@@ -232,6 +277,8 @@
           ${goModule.scaffoldHook}
           ${nodeModule.scaffoldHook}
           ${pythonModule.scaffoldHook}
+          ${rustModule.scaffoldHook}
+          ${denoModule.scaffoldHook}
           
           # ====================================================================================
           # Environment Variables
@@ -255,6 +302,8 @@
             "$(echo -e "  $LAVENDER Go: $RESET $(go version | awk '{print $3}')")" \
             "$(echo -e "  $LAVENDER Node.js: $RESET $(node --version)")" \
             "$(echo -e "  $LAVENDER Python: $RESET $(python --version | awk '{print $2}')")" \
+            "$(echo -e "  $LAVENDER Rust: $RESET $(rustc --version | awk '{print $2}')")" \
+            "$(echo -e "  $LAVENDER Deno: $RESET $(deno --version | head -n1 | awk '{print $2}')")" \
             "$(if [ "$USE_DATABASE" = "PostgreSQL" ]; then echo -e "  $MINT PostgreSQL: $RESET $(postgres --version | awk '{print $3}')"; fi)" \
             "$(if [ "$USE_REDIS" = "true" ]; then echo -e "  $MINT Redis: $RESET $(redis-server --version | awk '{print $3}')"; fi)"
           
@@ -273,6 +322,8 @@
           ${goModule.aliasesHook}
           ${nodeModule.aliasesHook}
           ${pythonModule.aliasesHook}
+          ${rustModule.aliasesHook}
+          ${denoModule.aliasesHook}
           
           # Database aliases (if PostgreSQL enabled)
           if [ "$USE_DATABASE" = "PostgreSQL" ]; then
